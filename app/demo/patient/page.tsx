@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -14,7 +14,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { ChevronLeft, Calendar as CalendarIcon, Pill, MessageSquare, Activity, Clock } from "lucide-react"
-import { format, formatDistanceToNow } from "date-fns"
+import { format } from "date-fns"
 
 interface Doctor {
   id: string
@@ -70,6 +70,7 @@ interface MedicineReminder {
 }
 
 export default function PatientDemo() {
+  const alarmTimeouts = useRef<NodeJS.Timeout[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [doctors, setDoctors] = useState<Doctor[]>([])
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
@@ -218,6 +219,38 @@ export default function PatientDemo() {
     }
   }
 
+  const clearReminderAlarms = () => {
+    alarmTimeouts.current.forEach((t) => clearTimeout(t))
+    alarmTimeouts.current = []
+  }
+
+  const scheduleReminderAlarms = (reminders: MedicineReminder[]) => {
+    clearReminderAlarms()
+    const now = new Date()
+
+    reminders
+      .filter((r) => !r.taken)
+      .forEach((reminder) => {
+        try {
+          const target = new Date(`${reminder.reminder_date}T${reminder.reminder_time}`)
+          if (isNaN(target.getTime())) return
+          const delay = target.getTime() - now.getTime()
+          if (delay <= 0 || delay > 24 * 60 * 60 * 1000) {
+            return // skip past reminders or ones too far away
+          }
+          const timeoutId = setTimeout(() => {
+            toast({
+              title: "Medicine Reminder",
+              description: `${reminder.medication_name || "Medication"} — ${reminder.dosage || ""} time to take now.`,
+            })
+          }, delay)
+          alarmTimeouts.current.push(timeoutId)
+        } catch {
+          // ignore invalid dates
+        }
+      })
+  }
+
   // Fetch medicine reminders
   const fetchMedicineReminders = async () => {
     try {
@@ -228,6 +261,7 @@ export default function PatientDemo() {
       if (response.ok) {
         const data = await response.json()
         setMedicineReminders(data)
+        scheduleReminderAlarms(data)
       } else {
         const error = await response.json().catch(() => ({ error: 'Failed to load medicine reminders' }))
         toast({
@@ -297,26 +331,13 @@ export default function PatientDemo() {
     }
   }
 
-  const getReminderDateTime = (reminder: MedicineReminder) => {
-    try {
-      return new Date(`${reminder.reminder_date}T${reminder.reminder_time}`)
-    } catch {
-      return null
-    }
-  }
-
-  const getRelativeReminderTime = (reminder: MedicineReminder) => {
-    const dt = getReminderDateTime(reminder)
-    if (!dt || isNaN(dt.getTime())) return ""
-    return formatDistanceToNow(dt, { addSuffix: true })
-  }
-
   useEffect(() => {
     fetchAppointments()
     fetchDoctors()
     fetchPrescriptions()
     fetchOrders()
     fetchMedicineReminders()
+    return () => clearReminderAlarms()
   }, [])
 
   // Handle appointment submission
@@ -786,43 +807,43 @@ export default function PatientDemo() {
             ) : (
               medicineReminders
                 .sort((a, b) => a.reminder_time.localeCompare(b.reminder_time))
-                .map((reminder) => {
-                  const relative = getRelativeReminderTime(reminder)
-                  return (
-                    <Card key={reminder.id}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-primary" />
-                            <div>
-                              <h4 className="font-semibold">
-                                {formatReminderTime(reminder.reminder_time)}
-                                {relative ? ` · ${relative}` : ""}
-                              </h4>
-                              <p className="text-sm text-muted-foreground">
-                                {reminder.medication_name || "Unknown Medication"} • {reminder.dosage || "N/A"}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`text-sm px-3 py-1 rounded-full ${
-                                reminder.taken ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                              }`}
-                            >
-                              {reminder.taken ? "Taken" : "Pending"}
-                            </span>
-                            {!reminder.taken && (
-                              <Button size="sm" variant="outline" onClick={() => markReminderAsTaken(reminder.id)}>
-                                Mark as Taken
-                              </Button>
-                            )}
+                .map((reminder) => (
+                  <Card key={reminder.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Clock className="w-5 h-5 text-primary" />
+                          <div>
+                            <h4 className="font-semibold">{formatReminderTime(reminder.reminder_time)}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {reminder.medication_name || "Unknown Medication"} • {reminder.dosage || "N/A"}
+                            </p>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-sm px-3 py-1 rounded-full ${
+                              reminder.taken
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {reminder.taken ? "Taken" : "Pending"}
+                          </span>
+                          {!reminder.taken && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => markReminderAsTaken(reminder.id)}
+                            >
+                              Mark as Taken
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
             )}
           </TabsContent>
         </Tabs>
