@@ -110,7 +110,7 @@ export default function DoctorDemo() {
     setIsViewDialogOpen(true)
   }
 
-  // Helper to get auth headers
+  // Helper to get auth headers (auto-seed demo token if missing)
   const getAuthHeaders = () => {
     const getDemoDoctorToken = () => {
       const demoUser = {
@@ -133,9 +133,7 @@ export default function DoctorDemo() {
       let token = localStorage.getItem('auth_token')
       if (!token) {
         token = getDemoDoctorToken()
-        if (token) {
-          localStorage.setItem('auth_token', token)
-        }
+        if (token) localStorage.setItem('auth_token', token)
       }
       return token
     }
