@@ -586,7 +586,9 @@ export default function DoctorDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Assigned Patients</p>
-                  <p className="text-3xl font-bold">24</p>
+                  <p className="text-3xl font-bold">
+                    {isLoadingPatients ? "-" : allPatients.length}
+                  </p>
                 </div>
                 <Users className="w-8 h-8 text-primary opacity-50" />
               </div>
