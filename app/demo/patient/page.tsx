@@ -339,6 +339,12 @@ export default function PatientDemo() {
     }
   }
 
+  // Get doctor name by ID (needed before notifications builder)
+  const getDoctorName = (doctorId: string) => {
+    const doctor = doctors.find((d) => d.id === doctorId)
+    return doctor?.name || "Unknown Doctor"
+  }
+
   // Build notifications for reminders, ready orders, and soon appointments
   const notifications: NotificationItem[] = [
     ...medicineReminders
@@ -474,12 +480,6 @@ export default function PatientDemo() {
   }
 
   const getPrescriptionById = (id: string) => prescriptions.find((p) => p.id === id)
-
-  // Get doctor name by ID
-  const getDoctorName = (doctorId: string) => {
-    const doctor = doctors.find((d) => d.id === doctorId)
-    return doctor?.name || "Unknown Doctor"
-  }
 
   // Get next appointment date for stats
   const nextAppointment = appointments
