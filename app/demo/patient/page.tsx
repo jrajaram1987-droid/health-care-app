@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
-import { ChevronLeft, Calendar as CalendarIcon, Pill, MessageSquare, Activity, Clock } from "lucide-react"
+import { ChevronLeft, Calendar as CalendarIcon, Pill, MessageSquare, Activity, Clock, Bell } from "lucide-react"
 import { format } from "date-fns"
 
 interface Doctor {
@@ -67,6 +67,14 @@ interface MedicineReminder {
   medication_name?: string
   dosage?: string
   created_at: string
+}
+
+interface NotificationItem {
+  id: string
+  title: string
+  description: string
+  timeLabel: string
+  type: "reminder" | "order" | "appointment"
 }
 
 export default function PatientDemo() {
@@ -331,6 +339,41 @@ export default function PatientDemo() {
     }
   }
 
+  // Build notifications for reminders, ready orders, and soon appointments
+  const notifications: NotificationItem[] = [
+    ...medicineReminders
+      .filter((r) => !r.taken)
+      .map((r) => ({
+        id: `reminder-${r.id}`,
+        title: r.medication_name || "Medicine Reminder",
+        description: `${r.dosage || ""} due at ${formatReminderTime(r.reminder_time)}`,
+        timeLabel: r.reminder_date,
+        type: "reminder" as const,
+      })),
+    ...orders
+      .filter((o) => o.status === "ready")
+      .map((o) => ({
+        id: `order-${o.id}`,
+        title: "Pharmacy order ready",
+        description: `Order is ready for pickup/delivery (status: ${o.status})`,
+        timeLabel: o.created_at ? format(new Date(o.created_at), "MMM d, h:mm a") : "",
+        type: "order" as const,
+      })),
+    ...appointments
+      .filter((a) => {
+        const dt = new Date(a.appointment_date)
+        const diff = dt.getTime() - Date.now()
+        return diff >= 0 && diff <= 24 * 60 * 60 * 1000 // within 24h
+      })
+      .map((a) => ({
+        id: `appt-${a.id}`,
+        title: "Upcoming appointment",
+        description: `${getDoctorName(a.doctor_id)} at ${formatAppointmentTime(a.appointment_date)}`,
+        timeLabel: formatAppointmentDate(a.appointment_date),
+        type: "appointment" as const,
+      })),
+  ].sort((a, b) => a.timeLabel.localeCompare(b.timeLabel))
+
   useEffect(() => {
     fetchAppointments()
     fetchDoctors()
@@ -524,6 +567,7 @@ export default function PatientDemo() {
             <TabsTrigger value="prescriptions">Prescriptions</TabsTrigger>
             <TabsTrigger value="pharmacy">Pharmacy Orders</TabsTrigger>
             <TabsTrigger value="reminders">Medicine Reminders</TabsTrigger>
+            <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
 
           <TabsContent value="appointments" className="space-y-4">
@@ -844,6 +888,45 @@ export default function PatientDemo() {
                     </CardContent>
                   </Card>
                 ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-4">
+            <h3 className="font-semibold">Notifications</h3>
+            {notifications.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">No notifications right now.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              notifications.map((note) => (
+                <Card key={note.id}>
+                  <CardContent className="pt-6 flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        <Bell className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold">{note.title}</h4>
+                        <p className="text-sm text-muted-foreground">{note.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{note.timeLabel}</p>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        note.type === "reminder"
+                          ? "bg-blue-100 text-blue-700"
+                          : note.type === "order"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                      }`}
+                    >
+                      {note.type}
+                    </span>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </TabsContent>
         </Tabs>
