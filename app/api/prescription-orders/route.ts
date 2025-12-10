@@ -15,6 +15,26 @@ export async function GET(request: NextRequest) {
       const pharmacy = mockDb.pharmacies.findByUserId(user.id)
       if (pharmacy) {
         orders = mockDb.prescriptionOrders.findByPharmacyId(pharmacy.id)
+        // Join with prescriptions, patients, and doctors to include details
+        orders = orders.map((order) => {
+          const prescription = mockDb.prescriptions.getAll().find((p) => p.id === order.prescription_id)
+          const patient = prescription
+            ? mockDb.patients.getAll().find((p) => p.id === prescription.patient_id)
+            : null
+          const patientUser = patient ? mockDb.users.findById(patient.user_id) : null
+          const doctor = prescription
+            ? mockDb.doctors.getAll().find((d) => d.id === prescription.doctor_id)
+            : null
+          const doctorUser = doctor ? mockDb.users.findById(doctor.user_id) : null
+          return {
+            ...order,
+            medication_name: prescription?.medication_name || 'Unknown Medication',
+            dosage: prescription?.dosage || '',
+            quantity: prescription?.quantity || 0,
+            patient_name: patientUser?.name || 'Unknown Patient',
+            doctor_name: doctorUser?.name || 'Unknown Doctor',
+          }
+        })
       }
     } else if (user.role === 'patient') {
       const patient = mockDb.patients.findByUserId(user.id)
