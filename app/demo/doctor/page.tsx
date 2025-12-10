@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -90,6 +91,13 @@ export default function DoctorDemo() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null)
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
+  const [isAddPatientDialogOpen, setIsAddPatientDialogOpen] = useState(false)
+  const [newPatientName, setNewPatientName] = useState("")
+  const [newPatientAge, setNewPatientAge] = useState<string>("")
+  const [newPatientStatus, setNewPatientStatus] = useState("Active")
+  const [newPatientEmail, setNewPatientEmail] = useState("")
+  const [newPatientPhone, setNewPatientPhone] = useState("")
+  const [isSavingPatient, setIsSavingPatient] = useState(false)
   const { toast } = useToast()
 
   // Handle view patient details
@@ -558,6 +566,39 @@ export default function DoctorDemo() {
     )
   }, [searchQuery, allPatients])
 
+  // Add patient locally (demo)
+  const handleSavePatient = () => {
+    if (!newPatientName.trim() || !newPatientAge.trim()) {
+      toast({
+        title: "Missing info",
+        description: "Please enter name and age for the patient.",
+        variant: "destructive",
+      })
+      return
+    }
+    setIsSavingPatient(true)
+    const newPatient: Patient = {
+      id: `patient-${Date.now()}`,
+      name: newPatientName.trim(),
+      age: parseInt(newPatientAge, 10) || 0,
+      status: newPatientStatus || "Active",
+      email: newPatientEmail || undefined,
+      phone: newPatientPhone || undefined,
+    }
+    setAllPatients((prev) => [...prev, newPatient])
+    toast({
+      title: "Patient added",
+      description: `${newPatient.name} added to assigned patients (local demo).`,
+    })
+    setIsAddPatientDialogOpen(false)
+    setNewPatientName("")
+    setNewPatientAge("")
+    setNewPatientStatus("Active")
+    setNewPatientEmail("")
+    setNewPatientPhone("")
+    setIsSavingPatient(false)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -664,7 +705,13 @@ export default function DoctorDemo() {
                   </Button>
                 )}
               </div>
-              <Button type="button" variant="outline" size="icon" title="Add patient">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                title="Add patient"
+                onClick={() => setIsAddPatientDialogOpen(true)}
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -695,26 +742,101 @@ export default function DoctorDemo() {
                   filteredPatients.map((patient) => (
                     <Card key={patient.id} className="cursor-pointer hover:bg-accent transition">
                       <CardContent className="pt-6">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-semibold">{patient.name}</h4>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold">{patient.name}</h4>
+                              <Badge variant="outline" className="capitalize">
+                                {patient.status}
+                              </Badge>
+                            </div>
                             <p className="text-sm text-muted-foreground">Age: {patient.age}</p>
+                            {patient.email && <p className="text-sm text-muted-foreground">Email: {patient.email}</p>}
+                            {patient.phone && <p className="text-sm text-muted-foreground">Phone: {patient.phone}</p>}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">{patient.status}</span>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={(e) => handleViewPatient(patient, e)}
-                            >
-                              View
-                            </Button>
-                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => handleViewPatient(patient, e)}
+                          >
+                            View
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
                   ))
                 )}
+
+                <Dialog open={isAddPatientDialogOpen} onOpenChange={setIsAddPatientDialogOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Patient</DialogTitle>
+                      <DialogDescription>Add a patient to your assigned list (demo only).</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="patient-name">Name</Label>
+                        <Input
+                          id="patient-name"
+                          value={newPatientName}
+                          onChange={(e) => setNewPatientName(e.target.value)}
+                          placeholder="Patient name"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="patient-age">Age</Label>
+                        <Input
+                          id="patient-age"
+                          type="number"
+                          min={0}
+                          value={newPatientAge}
+                          onChange={(e) => setNewPatientAge(e.target.value)}
+                          placeholder="Age"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="patient-status">Status</Label>
+                        <Select value={newPatientStatus} onValueChange={setNewPatientStatus}>
+                          <SelectTrigger id="patient-status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Active">Active</SelectItem>
+                            <SelectItem value="Recovering">Recovering</SelectItem>
+                            <SelectItem value="Critical">Critical</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="patient-email">Email (optional)</Label>
+                        <Input
+                          id="patient-email"
+                          type="email"
+                          value={newPatientEmail}
+                          onChange={(e) => setNewPatientEmail(e.target.value)}
+                          placeholder="patient@example.com"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="patient-phone">Phone (optional)</Label>
+                        <Input
+                          id="patient-phone"
+                          value={newPatientPhone}
+                          onChange={(e) => setNewPatientPhone(e.target.value)}
+                          placeholder="+1 555 123 4567"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAddPatientDialogOpen(false)} disabled={isSavingPatient}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSavePatient} disabled={isSavingPatient}>
+                        {isSavingPatient ? "Saving..." : "Save"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </>
             )}
           </TabsContent>
