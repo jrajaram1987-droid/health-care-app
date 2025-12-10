@@ -664,6 +664,9 @@ export default function DoctorDemo() {
                   </Button>
                 )}
               </div>
+              <Button type="button" variant="outline" size="icon" title="Add patient">
+                <Plus className="w-4 h-4" />
+              </Button>
             </div>
 
             {isLoadingPatients ? (
