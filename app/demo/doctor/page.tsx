@@ -112,7 +112,35 @@ export default function DoctorDemo() {
 
   // Helper to get auth headers
   const getAuthHeaders = () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+    const getDemoDoctorToken = () => {
+      const demoUser = {
+        id: 'user-1',
+        email: 'doctor@demo.com',
+        role: 'doctor' as const,
+        name: 'Dr. Sarah Smith',
+      }
+      try {
+        return typeof window !== 'undefined'
+          ? btoa(unescape(encodeURIComponent(JSON.stringify(demoUser))))
+          : null
+      } catch {
+        return null
+      }
+    }
+
+    const ensureAuthToken = () => {
+      if (typeof window === 'undefined') return null
+      let token = localStorage.getItem('auth_token')
+      if (!token) {
+        token = getDemoDoctorToken()
+        if (token) {
+          localStorage.setItem('auth_token', token)
+        }
+      }
+      return token
+    }
+
+    const token = ensureAuthToken()
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     }
