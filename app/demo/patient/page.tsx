@@ -14,7 +14,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { useToast } from "@/hooks/use-toast"
 import Link from "next/link"
 import { ChevronLeft, Calendar as CalendarIcon, Pill, MessageSquare, Activity, Clock } from "lucide-react"
-import { format } from "date-fns"
+import { format, formatDistanceToNow } from "date-fns"
 
 interface Doctor {
   id: string
@@ -295,6 +295,20 @@ export default function PatientDemo() {
     } catch {
       return timeString
     }
+  }
+
+  const getReminderDateTime = (reminder: MedicineReminder) => {
+    try {
+      return new Date(`${reminder.reminder_date}T${reminder.reminder_time}`)
+    } catch {
+      return null
+    }
+  }
+
+  const getRelativeReminderTime = (reminder: MedicineReminder) => {
+    const dt = getReminderDateTime(reminder)
+    if (!dt || isNaN(dt.getTime())) return ""
+    return formatDistanceToNow(dt, { addSuffix: true })
   }
 
   useEffect(() => {
@@ -772,43 +786,43 @@ export default function PatientDemo() {
             ) : (
               medicineReminders
                 .sort((a, b) => a.reminder_time.localeCompare(b.reminder_time))
-                .map((reminder) => (
-                  <Card key={reminder.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Clock className="w-5 h-5 text-primary" />
-                          <div>
-                            <h4 className="font-semibold">{formatReminderTime(reminder.reminder_time)}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {reminder.medication_name || "Unknown Medication"} • {reminder.dosage || "N/A"}
-                            </p>
+                .map((reminder) => {
+                  const relative = getRelativeReminderTime(reminder)
+                  return (
+                    <Card key={reminder.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Clock className="w-5 h-5 text-primary" />
+                            <div>
+                              <h4 className="font-semibold">
+                                {formatReminderTime(reminder.reminder_time)}
+                                {relative ? ` · ${relative}` : ""}
+                              </h4>
+                              <p className="text-sm text-muted-foreground">
+                                {reminder.medication_name || "Unknown Medication"} • {reminder.dosage || "N/A"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`text-sm px-3 py-1 rounded-full ${
+                                reminder.taken ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                              }`}
+                            >
+                              {reminder.taken ? "Taken" : "Pending"}
+                            </span>
+                            {!reminder.taken && (
+                              <Button size="sm" variant="outline" onClick={() => markReminderAsTaken(reminder.id)}>
+                                Mark as Taken
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-sm px-3 py-1 rounded-full ${
-                              reminder.taken
-                                ? "bg-green-100 text-green-700"
-                                : "bg-yellow-100 text-yellow-700"
-                            }`}
-                          >
-                            {reminder.taken ? "Taken" : "Pending"}
-                          </span>
-                          {!reminder.taken && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => markReminderAsTaken(reminder.id)}
-                            >
-                              Mark as Taken
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </CardContent>
+                    </Card>
+                  )
+                })
             )}
           </TabsContent>
         </Tabs>
