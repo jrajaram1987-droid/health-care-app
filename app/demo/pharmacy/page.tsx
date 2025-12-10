@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react"
 import Link from "next/link"
-import { ChevronLeft, Package, Clock, MessageSquare, AlertCircle, Loader2, Pill, User, ClipboardList } from "lucide-react"
+import { ChevronLeft, Package, Clock, MessageSquare, AlertCircle, Loader2, Pill, User, ClipboardList, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -199,6 +199,13 @@ export default function PharmacyDemo() {
       alternative_suggested: "bg-orange-100 text-orange-700",
     }
     return <Badge className={map[status]}>{status.replace("_", " ")}</Badge>
+  }
+
+  const handleAddInventory = () => {
+    toast({
+      title: "Inventory",
+      description: "Add/edit inventory coming soon for this demo.",
+    })
   }
 
   return (
@@ -410,8 +417,17 @@ export default function PharmacyDemo() {
           </TabsContent>
 
           <TabsContent value="inventory" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Inventory</h3>
+              <Button variant="outline" size="sm" onClick={handleAddInventory} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Medicine
+              </Button>
+            </div>
             <Card>
-              <CardContent className="pt-6 text-sm text-muted-foreground">Inventory is not yet wired on this screen. (API is ready at `/api/inventory`.)</CardContent>
+              <CardContent className="pt-6 text-sm text-muted-foreground">
+                Inventory is not yet wired on this screen. (API is ready at `/api/inventory`.)
+              </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
