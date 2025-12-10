@@ -219,6 +219,13 @@ export default function DoctorDemo() {
     fetchPatients()
   }, [])
 
+  // When patients load, preselect first for convenience
+  useEffect(() => {
+    if (allPatients.length > 0 && !selectedPatientId) {
+      setSelectedPatientId(allPatients[0].id)
+    }
+  }, [allPatients, selectedPatientId])
+
   // Fetch appointments from API
   const fetchAppointments = async () => {
     try {
@@ -539,6 +546,8 @@ export default function DoctorDemo() {
   const handleOpenPrescriptionDialog = (patientId?: string) => {
     if (patientId) {
       setSelectedPatientId(patientId)
+    } else if (!selectedPatientId && allPatients.length > 0) {
+      setSelectedPatientId(allPatients[0].id)
     }
     setIsPrescriptionDialogOpen(true)
   }
