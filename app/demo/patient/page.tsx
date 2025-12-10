@@ -77,42 +77,6 @@ interface NotificationItem {
   type: "reminder" | "order" | "appointment"
 }
 
-interface CountUpProps {
-  value: number | null | undefined
-  duration?: number
-}
-
-function CountUp({ value, duration = 800 }: CountUpProps) {
-  const [display, setDisplay] = useState(0)
-
-  useEffect(() => {
-    if (value == null || Number.isNaN(value)) {
-      setDisplay(0)
-      return
-    }
-    const start = 0
-    const end = Math.max(0, value)
-    const startTime = performance.now()
-    let raf: number | undefined
-
-    const step = (now: number) => {
-      const progress = Math.min((now - startTime) / duration, 1)
-      const current = Math.round(start + (end - start) * progress)
-      setDisplay(current)
-      if (progress < 1) {
-        raf = requestAnimationFrame(step)
-      }
-    }
-
-    raf = requestAnimationFrame(step)
-    return () => {
-      if (raf) cancelAnimationFrame(raf)
-    }
-  }, [value, duration])
-
-  return <span>{value == null ? "-" : display}</span>
-}
-
 export default function PatientDemo() {
   const alarmTimeouts = useRef<NodeJS.Timeout[]>([])
   const [appointments, setAppointments] = useState<Appointment[]>([])
@@ -603,9 +567,7 @@ export default function PatientDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Prescriptions</p>
-                  <p className="text-3xl font-bold">
-                    <CountUp value={prescriptions.length} />
-                  </p>
+                  <p className="text-3xl font-bold text-right">{prescriptions.length}</p>
                 </div>
                 <Pill className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -617,7 +579,7 @@ export default function PatientDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Next Appointment</p>
-                  <p className="text-3xl font-bold">
+                  <p className="text-3xl font-bold text-right">
                     {nextAppointment ? format(new Date(nextAppointment.appointment_date), "MMM d") : "None"}
                   </p>
                 </div>
@@ -631,9 +593,7 @@ export default function PatientDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Pharmacy Orders</p>
-                  <p className="text-3xl font-bold">
-                    <CountUp value={orders.length} />
-                  </p>
+                  <p className="text-3xl font-bold text-right">{orders.length}</p>
                 </div>
                 <Activity className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -645,9 +605,7 @@ export default function PatientDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Messages</p>
-                  <p className="text-3xl font-bold">
-                    <CountUp value={5} />
-                  </p>
+                  <p className="text-3xl font-bold text-right">5</p>
                 </div>
                 <MessageSquare className="w-8 h-8 text-primary opacity-50" />
               </div>

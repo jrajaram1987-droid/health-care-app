@@ -472,10 +472,15 @@ export default function DoctorDemo() {
       })
 
       if (response.ok) {
+        const created = await response.json()
         toast({
           title: "Success",
           description: "Prescription created successfully",
         })
+        // Optionally auto-send to pharmacy (demo default pharmacy)
+        if (created?.id) {
+          await sendPrescriptionToPharmacy(created.id)
+        }
         // Reset form
         setSelectedPatientId("")
         setMedicationName("")
@@ -700,7 +705,7 @@ export default function DoctorDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Assigned Patients</p>
-                  <p className="text-3xl font-bold">
+                  <p className="text-3xl font-bold text-right">
                     {isLoadingPatients ? "-" : allPatients.length}
                   </p>
                 </div>
@@ -714,7 +719,7 @@ export default function DoctorDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Today's Appointments</p>
-                  <p className="text-3xl font-bold">{todaysAppointments.length}</p>
+                  <p className="text-3xl font-bold text-right">{todaysAppointments.length}</p>
                 </div>
                 <Calendar className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -726,7 +731,7 @@ export default function DoctorDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Prescriptions</p>
-                  <p className="text-3xl font-bold">{prescriptions.length}</p>
+                  <p className="text-3xl font-bold text-right">{prescriptions.length}</p>
                 </div>
                 <FileText className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -738,7 +743,7 @@ export default function DoctorDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Unread Messages</p>
-                  <p className="text-3xl font-bold">{unreadMessagesCount}</p>
+                  <p className="text-3xl font-bold text-right">{unreadMessagesCount}</p>
                 </div>
                 <MessageSquare className="w-8 h-8 text-primary opacity-50" />
               </div>
