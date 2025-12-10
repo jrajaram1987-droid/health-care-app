@@ -61,7 +61,11 @@ export default function PharmacyDemo() {
 
   // Stub states to avoid breaking other tabs; these can be wired later
   const [messages] = useState<Message[]>([])
-  const [inventory] = useState<InventoryItem[]>([])
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
+  const [isLoadingInventory, setIsLoadingInventory] = useState(true)
+  const [isInventoryDialogOpen, setIsInventoryDialogOpen] = useState(false)
+  const [inventoryForm, setInventoryForm] = useState({ name: "", quantity: 0 })
+  const [isSavingInventory, setIsSavingInventory] = useState(false)
 
   const { toast } = useToast()
 
@@ -130,6 +134,7 @@ export default function PharmacyDemo() {
 
   useEffect(() => {
     fetchOrders()
+    fetchInventory()
   }, [])
 
   const handleUpdateOrderStatus = async (orderId: string, status: OrderStatus, extra?: { alternative_medicine?: string; notes?: string }) => {
@@ -202,10 +207,67 @@ export default function PharmacyDemo() {
   }
 
   const handleAddInventory = () => {
-    toast({
-      title: "Inventory",
-      description: "Add/edit inventory coming soon for this demo.",
-    })
+    setIsInventoryDialogOpen(true)
+  }
+
+  const fetchInventory = async () => {
+    try {
+      setIsLoadingInventory(true)
+      const res = await fetch("/api/inventory", { headers: getAuthHeaders() })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: "Failed to load inventory" }))
+        throw new Error(error.error || "Failed to load inventory")
+      }
+      const data = await res.json()
+      setInventory(data)
+    } catch (error: any) {
+      console.error("Error fetching inventory:", error)
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load inventory",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingInventory(false)
+    }
+  }
+
+  const handleSaveInventory = async () => {
+    if (!inventoryForm.name.trim() || inventoryForm.quantity < 0) {
+      toast({
+        title: "Missing info",
+        description: "Please enter a medicine name and non-negative quantity.",
+        variant: "destructive",
+      })
+      return
+    }
+    try {
+      setIsSavingInventory(true)
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          name: inventoryForm.name.trim(),
+          quantity: Number(inventoryForm.quantity),
+        }),
+      })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: "Failed to save inventory" }))
+        throw new Error(error.error || "Failed to save inventory")
+      }
+      toast({ title: "Saved", description: "Medicine added to inventory." })
+      setIsInventoryDialogOpen(false)
+      setInventoryForm({ name: "", quantity: 0 })
+      await fetchInventory()
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save inventory",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSavingInventory(false)
+    }
   }
 
   return (
@@ -419,16 +481,53 @@ export default function PharmacyDemo() {
           <TabsContent value="inventory" className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Inventory</h3>
-              <Button variant="outline" size="sm" onClick={handleAddInventory} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Add Medicine
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={fetchInventory} disabled={isLoadingInventory}>
+                  {isLoadingInventory ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Refresh
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleAddInventory} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Medicine
+                </Button>
+              </div>
             </div>
-            <Card>
-              <CardContent className="pt-6 text-sm text-muted-foreground">
-                Inventory is not yet wired on this screen. (API is ready at `/api/inventory`.)
-              </CardContent>
-            </Card>
+            {isLoadingInventory ? (
+              <Card>
+                <CardContent className="pt-6 text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading inventory...
+                </CardContent>
+              </Card>
+            ) : inventory.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6 text-sm text-muted-foreground">No medicines in inventory yet.</CardContent>
+              </Card>
+            ) : (
+              inventory.map((item) => (
+                <Card key={item.id}>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold">{item.name}</h4>
+                        <p className="text-sm text-muted-foreground">Stock: {item.quantity} units</p>
+                      </div>
+                      <span
+                        className={`text-sm px-3 py-1 rounded-full ${
+                          item.status === "Good"
+                            ? "bg-green-100 text-green-700"
+                            : item.status === "Low"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
         </Tabs>
       </main>
@@ -456,6 +555,45 @@ export default function PharmacyDemo() {
             <Button onClick={handleSubmitAlternative} disabled={isUpdatingOrder || !alternativeMedicine.trim()}>
               {isUpdatingOrder ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Submit Suggestion
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isInventoryDialogOpen} onOpenChange={setIsInventoryDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Medicine</DialogTitle>
+            <DialogDescription>Add a medicine to your inventory.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="med-name">Medicine Name</Label>
+              <Input
+                id="med-name"
+                placeholder="e.g., Amoxicillin 500mg"
+                value={inventoryForm.name}
+                onChange={(e) => setInventoryForm((p) => ({ ...p, name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="med-qty">Quantity</Label>
+              <Input
+                id="med-qty"
+                type="number"
+                min={0}
+                value={inventoryForm.quantity}
+                onChange={(e) => setInventoryForm((p) => ({ ...p, quantity: Number(e.target.value) }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInventoryDialogOpen(false)} disabled={isSavingInventory}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveInventory} disabled={isSavingInventory}>
+              {isSavingInventory ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
