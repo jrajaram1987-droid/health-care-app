@@ -78,6 +78,7 @@ export default function DoctorDemo() {
   const [isLoadingPrescriptions, setIsLoadingPrescriptions] = useState(true)
   const [isPrescriptionDialogOpen, setIsPrescriptionDialogOpen] = useState(false)
   const [isCreatingPrescription, setIsCreatingPrescription] = useState(false)
+  const [sendingPrescriptionId, setSendingPrescriptionId] = useState<string | null>(null)
   const [selectedPatientId, setSelectedPatientId] = useState<string>("")
   const [medicationName, setMedicationName] = useState("")
   const [dosage, setDosage] = useState("")
@@ -218,6 +219,38 @@ export default function DoctorDemo() {
       })
     } finally {
       setIsLoadingPrescriptions(false)
+    }
+  }
+
+  // Send prescription to pharmacy (demo: default pharmacy)
+  const sendPrescriptionToPharmacy = async (prescriptionId: string) => {
+    try {
+      setSendingPrescriptionId(prescriptionId)
+      const defaultPharmacyId = "pharmacy-1"
+      const response = await fetch("/api/prescription-orders", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          prescription_id: prescriptionId,
+          pharmacy_id: defaultPharmacyId,
+        }),
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ error: "Failed to send prescription" }))
+        throw new Error(error.error || "Failed to send prescription to pharmacy")
+      }
+      toast({
+        title: "Sent to pharmacy",
+        description: "Prescription sent successfully.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send prescription. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingPrescriptionId(null)
     }
   }
 
@@ -439,6 +472,13 @@ export default function DoctorDemo() {
     } finally {
       setIsCreatingPrescription(false)
     }
+  }
+
+  const handleOpenPrescriptionDialog = (patientId?: string) => {
+    if (patientId) {
+      setSelectedPatientId(patientId)
+    }
+    setIsPrescriptionDialogOpen(true)
   }
 
   // Filter today's appointments
@@ -1016,8 +1056,8 @@ export default function DoctorDemo() {
               prescriptions.map((rx) => (
                 <Card key={rx.id}>
                   <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 space-y-1">
                         <h4 className="font-semibold">{rx.patient_name || 'Unknown Patient'}</h4>
                         <p className="text-sm text-muted-foreground">
                           {rx.medication_name}
@@ -1027,16 +1067,36 @@ export default function DoctorDemo() {
                         {rx.notes && (
                           <p className="text-xs text-muted-foreground mt-1">{rx.notes}</p>
                         )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {formatPrescriptionDate(rx.created_at)}
-                        </span>
-                        {rx.quantity && (
-                          <span className="text-sm text-muted-foreground">
-                            Qty: {rx.quantity}
-                          </span>
-                        )}
+                          {rx.quantity ? ` • Qty: ${rx.quantity}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2 min-w-[200px] items-end">
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleOpenPrescriptionDialog(rx.patient_id)}
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="default" 
+                            size="sm"
+                            onClick={() => handleOpenPrescriptionDialog(rx.patient_id)}
+                          >
+                            Refill
+                          </Button>
+                        </div>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => sendPrescriptionToPharmacy(rx.id)}
+                          disabled={sendingPrescriptionId === rx.id}
+                        >
+                          {sendingPrescriptionId === rx.id ? "Sending..." : "Send to Pharmacy"}
+                        </Button>
                       </div>
                     </div>
                   </CardContent>

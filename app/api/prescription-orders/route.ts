@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = getAuthUser(request)
-    if (!user || user.role !== 'patient') {
+    if (!user || (user.role !== 'patient' && user.role !== 'doctor')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
