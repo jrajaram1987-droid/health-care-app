@@ -15,6 +15,42 @@ import Link from "next/link"
 import { ChevronLeft, Users, Calendar, FileText, MessageSquare, Clock, Search, X, Mail, Phone, Heart, AlertTriangle, CheckCircle2, PlayCircle, RefreshCw, Plus } from "lucide-react"
 import { format } from "date-fns"
 
+interface CountUpProps {
+  value: number | null | undefined
+  duration?: number
+}
+
+function CountUp({ value, duration = 800 }: CountUpProps) {
+  const [display, setDisplay] = useState(0)
+
+  useEffect(() => {
+    if (value == null || Number.isNaN(value)) {
+      setDisplay(0)
+      return
+    }
+    const start = 0
+    const end = Math.max(0, value)
+    const startTime = performance.now()
+    let raf: number | undefined
+
+    const step = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1)
+      const current = Math.round(start + (end - start) * progress)
+      setDisplay(current)
+      if (progress < 1) {
+        raf = requestAnimationFrame(step)
+      }
+    }
+
+    raf = requestAnimationFrame(step)
+    return () => {
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [value, duration])
+
+  return <span>{value == null ? "-" : display}</span>
+}
+
 interface Patient {
   id: string
   name: string
@@ -694,7 +730,7 @@ export default function DoctorDemo() {
                 <div>
                   <p className="text-sm text-muted-foreground">Assigned Patients</p>
                   <p className="text-3xl font-bold">
-                    {isLoadingPatients ? "-" : allPatients.length}
+                    {isLoadingPatients ? "-" : <CountUp value={allPatients.length} />}
                   </p>
                 </div>
                 <Users className="w-8 h-8 text-primary opacity-50" />
@@ -707,7 +743,9 @@ export default function DoctorDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Today's Appointments</p>
-                  <p className="text-3xl font-bold">{todaysAppointments.length}</p>
+                  <p className="text-3xl font-bold">
+                    {isLoadingAppointments ? "-" : <CountUp value={todaysAppointments.length} />}
+                  </p>
                 </div>
                 <Calendar className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -719,7 +757,9 @@ export default function DoctorDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Prescriptions</p>
-                  <p className="text-3xl font-bold">{prescriptions.length}</p>
+                  <p className="text-3xl font-bold">
+                    {isLoadingPrescriptions ? "-" : <CountUp value={prescriptions.length} />}
+                  </p>
                 </div>
                 <FileText className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -731,7 +771,9 @@ export default function DoctorDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Unread Messages</p>
-                  <p className="text-3xl font-bold">{unreadMessagesCount}</p>
+                  <p className="text-3xl font-bold">
+                    {isLoadingMessages ? "-" : <CountUp value={unreadMessagesCount} />}
+                  </p>
                 </div>
                 <MessageSquare className="w-8 h-8 text-primary opacity-50" />
               </div>
