@@ -33,12 +33,54 @@ interface Appointment {
   created_at: string
 }
 
+interface Prescription {
+  id: string
+  patient_id: string
+  doctor_id: string
+  medication_name: string
+  dosage: string
+  frequency: string
+  duration_days: number
+  quantity: number
+  notes?: string
+  doctor_name?: string
+  created_at: string
+}
+
+interface PrescriptionOrder {
+  id: string
+  prescription_id: string
+  pharmacy_id: string
+  status: string
+  alternative_medicine?: string
+  notes?: string
+  created_at: string
+}
+
+interface MedicineReminder {
+  id: string
+  patient_id: string
+  prescription_id: string
+  reminder_time: string
+  reminder_date: string
+  taken: boolean
+  medication_name?: string
+  dosage?: string
+  created_at: string
+}
+
 export default function PatientDemo() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [doctors, setDoctors] = useState<Doctor[]>([])
+  const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
+  const [orders, setOrders] = useState<PrescriptionOrder[]>([])
+  const [medicineReminders, setMedicineReminders] = useState<MedicineReminder[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true)
+  const [isLoadingPrescriptions, setIsLoadingPrescriptions] = useState(true)
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true)
+  const [isLoadingReminders, setIsLoadingReminders] = useState(true)
   
   // Form state
   const [selectedDoctor, setSelectedDoctor] = useState<string>("")
@@ -116,9 +158,151 @@ export default function PatientDemo() {
     }
   }
 
+  // Fetch prescriptions
+  const fetchPrescriptions = async () => {
+    try {
+      setIsLoadingPrescriptions(true)
+      const response = await fetch("/api/prescriptions", {
+        headers: getAuthHeaders(),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setPrescriptions(data)
+      } else {
+        const error = await response.json().catch(() => ({ error: 'Failed to load prescriptions' }))
+        toast({
+          title: "Error",
+          description: error.error || "Failed to load prescriptions. Please log in first.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching prescriptions:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load prescriptions. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingPrescriptions(false)
+    }
+  }
+
+  // Fetch prescription orders
+  const fetchOrders = async () => {
+    try {
+      setIsLoadingOrders(true)
+      const response = await fetch("/api/prescription-orders", {
+        headers: getAuthHeaders(),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setOrders(data)
+      } else {
+        const error = await response.json().catch(() => ({ error: 'Failed to load pharmacy orders' }))
+        toast({
+          title: "Error",
+          description: error.error || "Failed to load pharmacy orders. Please log in first.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching pharmacy orders:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load pharmacy orders. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingOrders(false)
+    }
+  }
+
+  // Fetch medicine reminders
+  const fetchMedicineReminders = async () => {
+    try {
+      setIsLoadingReminders(true)
+      const response = await fetch("/api/medicine-reminders", {
+        headers: getAuthHeaders(),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setMedicineReminders(data)
+      } else {
+        const error = await response.json().catch(() => ({ error: 'Failed to load medicine reminders' }))
+        toast({
+          title: "Error",
+          description: error.error || "Failed to load medicine reminders. Please log in first.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error fetching medicine reminders:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load medicine reminders. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoadingReminders(false)
+    }
+  }
+
+  // Mark reminder as taken
+  const markReminderAsTaken = async (reminderId: string) => {
+    try {
+      const response = await fetch("/api/medicine-reminders", {
+        method: "PATCH",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          id: reminderId,
+          taken: true,
+        }),
+      })
+      if (response.ok) {
+        toast({
+          title: "Success!",
+          description: "Medicine reminder marked as taken",
+        })
+        // Refresh reminders
+        fetchMedicineReminders()
+      } else {
+        const error = await response.json()
+        toast({
+          title: "Error",
+          description: error.error || "Failed to update reminder",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error marking reminder as taken:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update reminder. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Format reminder time for display
+  const formatReminderTime = (timeString: string) => {
+    try {
+      const [hours, minutes] = timeString.split(":")
+      const hour = parseInt(hours)
+      const ampm = hour >= 12 ? "PM" : "AM"
+      const displayHour = hour % 12 || 12
+      return `${displayHour}:${minutes} ${ampm}`
+    } catch {
+      return timeString
+    }
+  }
+
   useEffect(() => {
     fetchAppointments()
     fetchDoctors()
+    fetchPrescriptions()
+    fetchOrders()
+    fetchMedicineReminders()
   }, [])
 
   // Handle appointment submission
@@ -206,6 +390,13 @@ export default function PatientDemo() {
     return format(date, "h:mm a")
   }
 
+  const formatOrderDate = (dateString: string) => {
+    const date = new Date(dateString)
+    return format(date, "MMM d, yyyy h:mm a")
+  }
+
+  const getPrescriptionById = (id: string) => prescriptions.find((p) => p.id === id)
+
   // Get doctor name by ID
   const getDoctorName = (doctorId: string) => {
     const doctor = doctors.find((d) => d.id === doctorId)
@@ -245,7 +436,7 @@ export default function PatientDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Prescriptions</p>
-                  <p className="text-3xl font-bold">3</p>
+                  <p className="text-3xl font-bold">{prescriptions.length}</p>
                 </div>
                 <Pill className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -271,7 +462,7 @@ export default function PatientDemo() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Pharmacy Orders</p>
-                  <p className="text-3xl font-bold">2</p>
+                  <p className="text-3xl font-bold">{orders.length}</p>
                 </div>
                 <Activity className="w-8 h-8 text-primary opacity-50" />
               </div>
@@ -452,110 +643,173 @@ export default function PatientDemo() {
 
           <TabsContent value="prescriptions" className="space-y-4">
             <h3 className="font-semibold">Active Prescriptions</h3>
-            {[
-              {
-                id: "RX-001",
-                medicine: "Aspirin 500mg",
-                doctor: "Dr. Sarah Smith",
-                dosage: "1 tablet twice daily",
-                days: 30,
-              },
-              {
-                id: "RX-002",
-                medicine: "Metformin 850mg",
-                doctor: "Dr. Ahmed Hassan",
-                dosage: "1 tablet after meals",
-                days: 60,
-              },
-              {
-                id: "RX-003",
-                medicine: "Vitamin D3 1000IU",
-                doctor: "Dr. Sarah Smith",
-                dosage: "1 capsule daily",
-                days: 90,
-              },
-            ].map((rx) => (
-              <Card key={rx.id}>
+            {isLoadingPrescriptions ? (
+              <Card>
                 <CardContent className="pt-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold">{rx.medicine}</h4>
-                      <span className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">{rx.days} days</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">Prescribed by: {rx.doctor}</p>
-                    <p className="text-sm text-muted-foreground">Dosage: {rx.dosage}</p>
-                  </div>
+                  <p className="text-sm text-muted-foreground">Loading prescriptions...</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : prescriptions.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">No active prescriptions yet</p>
+                </CardContent>
+              </Card>
+            ) : (
+              prescriptions.map((rx) => (
+                <Card key={rx.id}>
+                  <CardContent className="pt-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">{rx.medication_name}</h4>
+                        <span className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">
+                          {rx.duration_days} days
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Prescribed by: {rx.doctor_name || "Unknown Doctor"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">Dosage: {rx.dosage}</p>
+                      <p className="text-sm text-muted-foreground">Frequency: {rx.frequency}</p>
+                      {rx.quantity && (
+                        <p className="text-sm text-muted-foreground">Quantity: {rx.quantity}</p>
+                      )}
+                      {rx.notes && (
+                        <p className="text-sm text-muted-foreground mt-2 italic">Notes: {rx.notes}</p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Prescribed on: {format(new Date(rx.created_at), "MMM d, yyyy")}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </TabsContent>
 
           <TabsContent value="pharmacy" className="space-y-4">
             <h3 className="font-semibold">Pharmacy Orders</h3>
-            {[
-              { order: "ORD-001", status: "Delivered", date: "Dec 5", items: 2 },
-              { order: "ORD-002", status: "Ready for Pickup", date: "Dec 8", items: 3 },
-              { order: "ORD-003", status: "Processing", date: "Dec 9", items: 1 },
-            ].map((ord) => (
-              <Card key={ord.order}>
+            {isLoadingOrders ? (
+              <Card>
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold">{ord.order}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {ord.date} • {ord.items} items
-                      </p>
-                    </div>
-                    <span
-                      className={`text-sm px-3 py-1 rounded-full ${
-                        ord.status === "Delivered"
-                          ? "bg-green-100 text-green-700"
-                          : ord.status === "Ready for Pickup"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {ord.status}
-                    </span>
-                  </div>
+                  <p className="text-sm text-muted-foreground">Loading pharmacy orders...</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : orders.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">No pharmacy orders yet</p>
+                </CardContent>
+              </Card>
+            ) : (
+              orders.map((ord) => {
+                const rx = getPrescriptionById(ord.prescription_id)
+                return (
+                  <Card key={ord.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <h4 className="font-semibold">
+                            {rx?.medication_name || "Prescription Order"}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Status: <span className="capitalize">{ord.status}</span>
+                          </p>
+                          {rx && (
+                            <p className="text-sm text-muted-foreground">
+                              Prescribed by: {rx.doctor_name || "Unknown Doctor"}
+                            </p>
+                          )}
+                          {ord.alternative_medicine && (
+                            <p className="text-sm text-muted-foreground">
+                              Alternative: {ord.alternative_medicine}
+                            </p>
+                          )}
+                          {ord.notes && (
+                            <p className="text-sm text-muted-foreground italic">
+                              Notes: {ord.notes}
+                            </p>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            Created: {formatOrderDate(ord.created_at)}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-sm px-3 py-1 rounded-full ${
+                            ord.status === "delivered" || ord.status === "completed"
+                              ? "bg-green-100 text-green-700"
+                              : ord.status === "ready"
+                                ? "bg-blue-100 text-blue-700"
+                                : ord.status === "cancelled"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-yellow-100 text-yellow-700"
+                          }`}
+                        >
+                          {ord.status}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
           </TabsContent>
 
           <TabsContent value="reminders" className="space-y-4">
             <h3 className="font-semibold">Today's Medicine Reminders</h3>
-            {[
-              { time: "8:00 AM", medicine: "Aspirin 500mg", dosage: "1 tablet", status: "Completed" },
-              { time: "12:00 PM", medicine: "Metformin 850mg", dosage: "1 tablet", status: "Completed" },
-              { time: "8:00 PM", medicine: "Aspirin 500mg", dosage: "1 tablet", status: "Pending" },
-              { time: "9:00 PM", medicine: "Vitamin D3 1000IU", dosage: "1 capsule", status: "Pending" },
-            ].map((reminder, idx) => (
-              <Card key={idx}>
+            {isLoadingReminders ? (
+              <Card>
                 <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Clock className="w-5 h-5 text-primary" />
-                      <div>
-                        <h4 className="font-semibold">{reminder.time}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {reminder.medicine} • {reminder.dosage}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-sm px-3 py-1 rounded-full ${
-                        reminder.status === "Completed"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {reminder.status}
-                    </span>
-                  </div>
+                  <p className="text-sm text-muted-foreground">Loading medicine reminders...</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : medicineReminders.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground">No medicine reminders for today</p>
+                </CardContent>
+              </Card>
+            ) : (
+              medicineReminders
+                .sort((a, b) => a.reminder_time.localeCompare(b.reminder_time))
+                .map((reminder) => (
+                  <Card key={reminder.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Clock className="w-5 h-5 text-primary" />
+                          <div>
+                            <h4 className="font-semibold">{formatReminderTime(reminder.reminder_time)}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              {reminder.medication_name || "Unknown Medication"} • {reminder.dosage || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-sm px-3 py-1 rounded-full ${
+                              reminder.taken
+                                ? "bg-green-100 text-green-700"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {reminder.taken ? "Taken" : "Pending"}
+                          </span>
+                          {!reminder.taken && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => markReminderAsTaken(reminder.id)}
+                            >
+                              Mark as Taken
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+            )}
           </TabsContent>
         </Tabs>
       </main>
