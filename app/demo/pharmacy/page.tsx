@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import Link from "next/link"
 import { ChevronLeft, Package, Clock, MessageSquare, AlertCircle, Loader2, Pill, User, ClipboardList } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -50,6 +50,7 @@ interface InventoryItem {
 }
 
 export default function PharmacyDemo() {
+  const hasRetriedAuth = useRef(false)
   const [orders, setOrders] = useState<PrescriptionOrder[]>([])
   const [isLoadingOrders, setIsLoadingOrders] = useState(true)
   const [isAlternativeDialogOpen, setIsAlternativeDialogOpen] = useState(false)
@@ -64,8 +65,36 @@ export default function PharmacyDemo() {
 
   const { toast } = useToast()
 
+  const getDemoPharmacyToken = () => {
+    const demoUser = {
+      id: "user-3",
+      email: "pharmacy@demo.com",
+      role: "pharmacy" as const,
+      name: "HealthCare Pharmacy",
+    }
+    try {
+      return typeof window !== "undefined"
+        ? btoa(unescape(encodeURIComponent(JSON.stringify(demoUser))))
+        : null
+    } catch {
+      return null
+    }
+  }
+
+  const ensureAuthToken = () => {
+    if (typeof window === "undefined") return null
+    let token = localStorage.getItem("auth_token")
+    if (!token) {
+      token = getDemoPharmacyToken()
+      if (token) {
+        localStorage.setItem("auth_token", token)
+      }
+    }
+    return token
+  }
+
   const getAuthHeaders = () => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+    const token = ensureAuthToken()
     const headers: HeadersInit = { "Content-Type": "application/json" }
     if (token) headers["Authorization"] = `Bearer ${token}`
     return headers
@@ -76,6 +105,12 @@ export default function PharmacyDemo() {
       setIsLoadingOrders(true)
       const res = await fetch("/api/prescription-orders", { headers: getAuthHeaders() })
       if (!res.ok) {
+        // If unauthorized, try to set a demo token once and retry
+        if (res.status === 401 && !hasRetriedAuth.current) {
+          hasRetriedAuth.current = true
+          ensureAuthToken()
+          return fetchOrders()
+        }
         const error = await res.json().catch(() => ({ error: "Failed to load orders" }))
         throw new Error(error.error || "Failed to load orders. Please log in.")
       }
