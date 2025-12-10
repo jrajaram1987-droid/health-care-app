@@ -84,6 +84,7 @@ export default function PatientDemo() {
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([])
   const [orders, setOrders] = useState<PrescriptionOrder[]>([])
   const [medicineReminders, setMedicineReminders] = useState<MedicineReminder[]>([])
+  const [sendingPrescriptionId, setSendingPrescriptionId] = useState<string | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true)
@@ -481,6 +482,45 @@ export default function PatientDemo() {
 
   const getPrescriptionById = (id: string) => prescriptions.find((p) => p.id === id)
 
+  // Send prescription to pharmacy (demo default pharmacy)
+  const sendPrescriptionToPharmacy = async (prescriptionId: string) => {
+    try {
+      setSendingPrescriptionId(prescriptionId)
+      const defaultPharmacyId = "pharmacy-1"
+      const response = await fetch("/api/prescription-orders", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({
+          prescription_id: prescriptionId,
+          pharmacy_id: defaultPharmacyId,
+        }),
+      })
+      if (response.ok) {
+        toast({
+          title: "Sent to pharmacy",
+          description: "Your prescription was sent successfully.",
+        })
+        fetchOrders()
+      } else {
+        const error = await response.json().catch(() => ({ error: "Failed to send prescription" }))
+        toast({
+          title: "Error",
+          description: error.error || "Failed to send prescription to pharmacy",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Error sending prescription:", error)
+      toast({
+        title: "Error",
+        description: "Failed to send prescription. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setSendingPrescriptionId(null)
+    }
+  }
+
   // Get next appointment date for stats
   const nextAppointment = appointments
     .filter((apt) => apt.status === "scheduled")
@@ -759,6 +799,16 @@ export default function PatientDemo() {
                       <p className="text-xs text-muted-foreground mt-2">
                         Prescribed on: {format(new Date(rx.created_at), "MMM d, yyyy")}
                       </p>
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => sendPrescriptionToPharmacy(rx.id)}
+                          disabled={sendingPrescriptionId === rx.id}
+                        >
+                          {sendingPrescriptionId === rx.id ? "Sending..." : "Send to Pharmacy"}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
