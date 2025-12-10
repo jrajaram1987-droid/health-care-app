@@ -357,6 +357,19 @@ export default function PatientDemo() {
         timeLabel: r.reminder_date,
         type: "reminder" as const,
       })),
+    ...medicineReminders
+      .filter((r) => {
+        const target = new Date(`${r.reminder_date}T${r.reminder_time}`)
+        const diff = target.getTime() - Date.now()
+        return !r.taken && !isNaN(target.getTime()) && diff > 0 && diff <= 24 * 60 * 60 * 1000
+      })
+      .map((r) => ({
+        id: `alarm-${r.id}`,
+        title: "Alarm scheduled",
+        description: `${r.medication_name || "Medication"} at ${formatReminderTime(r.reminder_time)}`,
+        timeLabel: r.reminder_date,
+        type: "reminder" as const,
+      })),
     ...orders
       .filter((o) => o.status === "ready")
       .map((o) => ({
