@@ -1,0 +1,36 @@
+========================================
+HEALTHCARE APP - SIMPLE STEPS TO RUN
+========================================
+
+✅ Node.js is installed and working!
+
+NOW DO THIS:
+
+1. Open PowerShell in the project folder:
+   C:\Users\ABPS\Downloads\healthcare-app
+
+2. Type this command and press Enter:
+   npm install
+   
+   (Wait 2-5 minutes for it to finish)
+
+3. Once it's done, type this and press Enter:
+   npm run dev
+
+4. Open your web browser and go to:
+   http://localhost:3000
+
+5. That's it! Your app is running!
+
+========================================
+DEMO ACCOUNTS TO TEST:
+========================================
+
+Doctor:    doctor@demo.com / demo123
+Patient:   patient@demo.com / demo123
+Pharmacy:  pharmacy@demo.com / demo123
+
+========================================
+
+
+
